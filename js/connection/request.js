@@ -15,6 +15,8 @@ export const defaultJSON = {
     'Content-Type': 'application/json'
 };
 
+export const BASE_URL = 'http://localhost:9001';
+
 const singleton = (() => {
     /**
      * @type {Promise<Cache>|null}

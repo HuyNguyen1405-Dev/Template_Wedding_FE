@@ -5,7 +5,8 @@ export const storage = (table) => {
      * @returns {any}
      */
     const get = (key = null) => {
-        const data = JSON.parse(localStorage.getItem(table));
+        const raw = localStorage.getItem(table);
+        const data = raw ? JSON.parse(raw) : {};
         return key ? data[String(key)] : data;
     };
 
@@ -15,16 +16,23 @@ export const storage = (table) => {
      * @returns {void}
      */
     const set = (key, value) => {
-        const data = get();
-        data[String(key)] = value;
-        localStorage.setItem(table, JSON.stringify(data));
+        try {
+            const data = get();
+            data[String(key)] = value;
+            localStorage.setItem(table, JSON.stringify(data));
+        } catch (e) {
+            console.error(`❌ storage.set error [${table}]:`, e);
+        }
     };
 
     /**
      * @param {string} key
      * @returns {boolean}
      */
-    const has = (key) => Object.keys(get()).includes(String(key));
+    const has = (key) => {
+        const data = get();
+        return data && Object.prototype.hasOwnProperty.call(data, String(key));
+    };
 
     /**
      * @param {string} key

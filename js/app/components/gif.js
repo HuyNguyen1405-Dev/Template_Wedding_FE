@@ -168,7 +168,7 @@ export const gif = (() => {
     const render = (uuid, path, params) => {
         params = {
             media_filter: 'tinygif',
-            client_key: 'undangan_app',
+            client_key: 'wedding',
             key: config.get('tenor_key'),
             country: lang.getCountry(),
             locale: lang.getLocale(),

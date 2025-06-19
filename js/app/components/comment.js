@@ -36,7 +36,7 @@ export const comment = (() => {
      */
     const onNullComment = () => {
         const desc = lang
-            .on('id', '📢 Yuk, share undangan ini biar makin rame komentarnya! 🎉')
+            .on('id', '📢 Nào, hãy chia sẻ thiệp mời này để có thêm nhiều bình luận sôi động hơn nhé! 🎉')
             .on('en', '📢 Let\'s share this invitation to get more comments! 🎉')
             .get();
 
@@ -193,7 +193,6 @@ export const comment = (() => {
      * @returns {Promise<ReturnType<typeof dto.getCommentsResponse>>}
      */
     const show = () => {
-
         // remove all event listener.
         lastRender.forEach((u) => {
             like.removeListener(u);
@@ -204,9 +203,8 @@ export const comment = (() => {
             comments.innerHTML = card.renderLoading().repeat(pagination.getPer());
         }
 
-        return request(HTTP_GET, `/api/v2/comment?per=${pagination.getPer()}&next=${pagination.getNext()}&lang=${lang.getLanguage()}`)
+        return request(HTTP_GET, `/api/v2/comment`)
             .token(session.getToken())
-            .withCache(1000 * 30)
             .send(dto.getCommentsResponseV2)
             .then(async (res) => {
                 comments.setAttribute('data-loading', 'false');
@@ -215,27 +213,33 @@ export const comment = (() => {
                     await gif.remove(u);
                 }
 
-                if (res.data.lists.length === 0) {
+                const fullList = res.data.lists;
+
+                if (fullList.length === 0) {
                     comments.innerHTML = onNullComment();
                     return res;
                 }
+                const pageNow = pagination.getNext();
+                const perPage = pagination.getPer();
+                const pagedList = fullList.slice(pageNow, pageNow + perPage);
 
                 const flatten = (ii) => ii.flatMap((i) => [i.uuid, ...flatten(i.comments)]);
-                lastRender.splice(0, lastRender.length, ...flatten(res.data.lists));
-                showHide.set('hidden', traverse(res.data.lists, showHide.get('hidden')));
+                lastRender.splice(0, lastRender.length, ...flatten(pagedList));
+                showHide.set('hidden', traverse(pagedList, showHide.get('hidden')));
 
-                let data = await card.renderContentMany(res.data.lists);
-                if (res.data.lists.length < pagination.getPer()) {
+                let data = await card.renderContentMany(pagedList);
+                if (pagedList.length < perPage) {
                     data += onNullComment();
                 }
 
                 util.safeInnerHTML(comments, data);
+                comments.querySelectorAll('.d-none').forEach(el => el.classList.remove('d-none'));
 
                 lastRender.forEach((u) => {
                     like.addListener(u);
                 });
 
-                return res;
+                return { ...res, data: { ...res.data, lists: pagedList } };
             })
             .then(async (res) => {
                 comments.dispatchEvent(new Event('undangan.comment.result'));
@@ -419,16 +423,17 @@ export const comment = (() => {
      * @returns {Promise<void>}
      */
     const send = async (button) => {
-        const id = button.getAttribute('data-uuid');
+        let id = button.getAttribute('data-uuid');
+        if (id === null || id.trim() === '' || id === 'null' || id === 'undefined') {
+            id = null;
+        }
 
         const name = document.getElementById('form-name');
-        const nameValue = name.value;
+        const nameValue = name?.value?.trim();
 
-        if (nameValue.length === 0) {
+        if (!nameValue) {
             alert('Name cannot be empty.');
-
             if (id) {
-                // scroll to form.
                 name.scrollIntoView({ block: 'center' });
             }
             return;
@@ -440,8 +445,9 @@ export const comment = (() => {
             return;
         }
 
-        const gifIsOpen = gif.isOpen(id ? id : gif.default);
-        const gifId = gif.getResultId(id ? id : gif.default);
+        const gifTarget = id || gif.default;
+        const gifIsOpen = gif.isOpen(gifTarget);
+        const gifId = gif.getResultId(gifTarget);
         const gifCancel = gif.buttonCancel(id);
 
         if (gifIsOpen && !gifId) {
@@ -454,7 +460,7 @@ export const comment = (() => {
         }
 
         const form = document.getElementById(`form-${id ? `inner-${id}` : 'comment'}`);
-        if (!gifIsOpen && form.value?.trim().length === 0) {
+        if (!gifIsOpen && form?.value?.trim().length === 0) {
             alert('Comments cannot be empty.');
             return;
         }
@@ -482,18 +488,18 @@ export const comment = (() => {
         if (!session.isAdmin()) {
             const info = storage('information');
             info.set('name', nameValue);
-
             if (!id) {
                 info.set('presence', isPresence);
             }
         }
 
-        const response = await request(HTTP_POST, `/api/comment?lang=${lang.getLanguage()}`)
+        const response = await request(HTTP_POST, `/api/v2/comment?lang=${lang.getLanguage()}`)
             .token(session.getToken())
             .body(dto.postCommentRequest(id, nameValue, isPresence, gifIsOpen ? null : form.value, gifId))
             .send(dto.getCommentResponse)
-            .then((res) => res, () => null);
+            .catch(() => null);
 
+        // Khôi phục trạng thái
         if (name) {
             name.disabled = false;
         }
@@ -516,7 +522,7 @@ export const comment = (() => {
 
         btn.restore();
 
-        if (!response || response.code !== HTTP_STATUS_CREATED) {
+        if (!response?.data) {
             return;
         }
 
@@ -531,52 +537,64 @@ export const comment = (() => {
         }
 
         if (!id) {
-            if (pagination.reset()) {
-                await show();
-                comments.scrollIntoView();
-                return;
+            if (name) {
+                name.value = '';
             }
 
-            pagination.setTotal(pagination.geTotal() + 1);
-            if (comments.children.length === pagination.getPer()) {
-                comments.lastElementChild.remove();
+            if (presence) {
+                presence.value = '1';
             }
 
-            response.data.is_parent = true;
-            response.data.is_admin = session.isAdmin();
-            comments.insertAdjacentHTML('afterbegin', await card.renderContentMany([response.data]));
+            await show();
             comments.scrollIntoView();
+            return;
         }
 
-        if (id) {
-            showHide.set('hidden', showHide.get('hidden').concat([dto.commentShowMore(response.data.uuid, true)]));
-            showHide.set('show', showHide.get('show').concat([id]));
+        // --- Xử lý trả lời comment ---
+        showHide.set('hidden', showHide.get('hidden').concat([dto.commentShowMore(response.data.uuid, true)]));
+        showHide.set('show', showHide.get('show').concat([id]));
 
-            removeInnerForm(id);
+        removeInnerForm(id);
 
-            response.data.is_parent = false;
-            response.data.is_admin = session.isAdmin();
-            document.getElementById(`reply-content-${id}`).insertAdjacentHTML('beforeend', await card.renderContentSingle(response.data));
+        response.data.is_parent = false;
+        response.data.is_admin = session.isAdmin();
 
-            const anchorTag = document.getElementById(`button-${id}`).querySelector('a');
-            if (anchorTag) {
-                if (anchorTag.getAttribute('data-show') === 'false') {
-                    showOrHide(anchorTag);
-                }
+        const html = await card.renderContentSingle(response.data);
+        const replyBox = document.getElementById(`reply-content-${id}`);
+        if (replyBox) {
+            replyBox.insertAdjacentHTML('beforeend', html);
+        }
 
-                anchorTag.remove();
+        const anchorTag = document.getElementById(`button-${id}`)?.querySelector('a');
+        if (anchorTag) {
+            if (anchorTag.getAttribute('data-show') === 'false') {
+                showOrHide(anchorTag);
             }
-
-            const uuids = [response.data.uuid];
-            const readMoreElement = document.createRange().createContextualFragment(card.renderReadMore(id, anchorTag ? anchorTag.getAttribute('data-uuids').split(',').concat(uuids) : uuids));
-
-            const buttonLike = like.getButtonLike(id);
-            buttonLike.parentNode.insertBefore(readMoreElement, buttonLike);
+            anchorTag.remove();
         }
 
-        like.addListener(response.data.uuid);
-        lastRender.push(response.data.uuid);
+        const uuids = [response.data.uuid];
+        const dataUuids = anchorTag?.getAttribute('data-uuids')?.split(',') || [];
+        const readMore = card.renderReadMore(id, dataUuids.concat(uuids));
+        const buttonLike = like.getButtonLike(id);
+
+        if (buttonLike?.parentNode) {
+            const frag = document.createRange().createContextualFragment(readMore);
+            buttonLike.parentNode.insertBefore(frag, buttonLike);
+        }
+
+        requestAnimationFrame(() => {
+            const elLike = document.getElementById(`like-${response.data.uuid}`);
+            if (elLike) {
+                like.addListener(response.data.uuid);
+                lastRender.push(response.data.uuid);
+            } else {
+                console.warn(`Không tìm thấy like-${response.data.uuid}`);
+            }
+        });
     };
+
+
 
     /**
      * @param {HTMLButtonElement} button

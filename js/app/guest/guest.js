@@ -54,6 +54,34 @@ export const guest = (() => {
         util.timeOut(updateCountdown);
     };
 
+    const countDownDate2 = () => {
+        const count = (new Date(document.body.getAttribute('data-time2').replace(' ', 'T'))).getTime();
+
+        /**
+         * @param {number} num 
+         * @returns {string}
+         */
+        const pad2 = (num) => num < 10 ? `0${num}` : `${num}`;
+
+        const day2 = document.getElementById('day2');
+        const hour2 = document.getElementById('hour2');
+        const minute2 = document.getElementById('minute2');
+        const second2 = document.getElementById('second2');
+
+        const updateCountdown2 = () => {
+            const distance = Math.abs(count - Date.now());
+
+            day2.textContent = pad2(Math.floor(distance / (1000 * 60 * 60 * 24)));
+            hour2.textContent = pad2(Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)));
+            minute2.textContent = pad2(Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)));
+            second2.textContent = pad2(Math.floor((distance % (1000 * 60)) / 1000));
+
+            util.timeOut(updateCountdown2, 1000 - (Date.now() % 1000));
+        };
+
+        util.timeOut(updateCountdown2);
+    };
+
     /**
      * @returns {void}
      */
@@ -251,10 +279,10 @@ export const guest = (() => {
         const url = new URL('https://calendar.google.com/calendar/render');
         const data = new URLSearchParams({
             action: 'TEMPLATE',
-            text: 'The Wedding of Wahyu and Riski',
-            dates: `${formatDate('2023-03-15 10:00')}/${formatDate('2023-03-15 11:00')}`,
-            details: 'Tanpa mengurangi rasa hormat, kami mengundang Anda untuk berkenan menghadiri acara pernikahan kami. Terima kasih atas perhatian dan doa restu Anda, yang menjadi kebahagiaan serta kehormatan besar bagi kami.',
-            location: 'RT 10 RW 02, Desa Pajerukan, Kec. Kalibagor, Kab. Banyumas, Jawa Tengah 53191.',
+            text: 'The Wedding of Quoc Cuong & Bich Hao',
+            dates: `${formatDate('2025-07-05 10:00')}/${formatDate('2025-07-05 11:30')}`,
+            details: 'Trân trọng kính mời quý vị đến dự lễ thành hôn của chúng tôi. Xin chân thành cảm ơn sự quan tâm và những lời chúc phúc của quý vị – đó là niềm vinh dự và hạnh phúc lớn lao đối với chúng tôi.',
+            location: 'Phú Trung - Đại Hiệp - Đại Lộc - Quảng Nam',
             ctz: config.get('tz'),
         });
 
@@ -294,6 +322,7 @@ export const guest = (() => {
     const booting = async () => {
         animateSvg();
         countDownDate();
+        countDownDate2();
         showGuestName();
         modalImageClick();
         normalizeArabicFont();
@@ -318,6 +347,8 @@ export const guest = (() => {
         // remove loading screen and show welcome screen.
         await util.changeOpacity(document.getElementById('loading'), false).then((el) => el.remove());
     };
+    
+
 
     /**
      * @returns {void}
@@ -342,6 +373,7 @@ export const guest = (() => {
         document.getElementById('button-modal-download').addEventListener('click', (e) => {
             img.download(e.currentTarget.getAttribute('data-src'));
         });
+
 
         if (!token || token.length <= 0) {
             img.load();

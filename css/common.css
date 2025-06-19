@@ -4,7 +4,7 @@ html {
 }
 
 body {
-    font-family: 'Josefin Sans', sans-serif !important;
+    font-family: 'Josefin Sans', Arial, sans-serif !important;
     padding: 0 !important;
     width: 100% !important;
     overflow-x: hidden !important;
@@ -113,4 +113,10 @@ html[data-bs-theme="light"] .bg-overlay-auto {
 
 .gif-image {
     max-height: 10rem;
+}
+
+.font-ten-co-dau-chu-re {
+  font-family: "Mea Culpa", cursive !important;
+  font-weight: 500;
+  font-style: normal;
 }

@@ -28,7 +28,7 @@ export const dto = (() => {
             ip,
             user_agent,
             comments: comments?.map(getCommentResponse) ?? [],
-            like: likeCommentResponse(like?.love ?? 0),
+            like: like,
         };
     };
 

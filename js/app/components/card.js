@@ -3,8 +3,33 @@ import { util } from '../../common/util.js';
 import { storage } from '../../common/storage.js';
 import { session } from '../../common/session.js';
 
+
+
 export const card = (() => {
 
+
+    function timeAgo(dateStr) {
+        const rtf = new Intl.RelativeTimeFormat('vi', { numeric: 'auto' });
+        const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+
+        const intervals = [
+            { label: 'year', seconds: 31536000 },
+            { label: 'month', seconds: 2592000 },
+            { label: 'day', seconds: 86400 },
+            { label: 'hour', seconds: 3600 },
+            { label: 'minute', seconds: 60 },
+            { label: 'second', seconds: 1 },
+        ];
+
+        for (const interval of intervals) {
+            const count = Math.floor(seconds / interval.seconds);
+            if (count >= 1) {
+                return rtf.format(-count, interval.label);
+            }
+        }
+
+        return 'vừa xong';
+    }
     /**
      * @type {ReturnType<typeof storage>|null}
      */
@@ -52,11 +77,16 @@ export const card = (() => {
      */
     const renderLike = (c) => {
         return `
-        <button style="font-size: 0.8rem;" onclick="undangan.comment.like.love(this)" data-uuid="${c.uuid}" class="btn btn-sm btn-outline-auto ms-auto rounded-3 p-0 shadow-sm d-flex justify-content-start align-items-center" data-offline-disabled="false">
-            <span class="my-0 mx-1" data-count-like="${c.like.love}">${c.like.love}</span>
+        <button style="font-size: 0.8rem;" onclick="undangan.comment.like.love(this)" 
+                data-uuid="${c.uuid}" 
+                class="btn btn-sm btn-outline-auto ms-auto rounded-3 p-0 shadow-sm d-flex justify-content-start align-items-center" 
+                data-offline-disabled="false">
+            <span class="my-0 mx-1" data-count-like="${c.like}">${c.like}</span>
             <i class="me-1 ${likes.has(c.uuid) ? 'fa-solid fa-heart text-danger' : 'fa-regular fa-heart'}"></i>
-        </button>`;
+        </button>
+    `;
     };
+
 
     /**
      * @param {ReturnType<typeof dto.getCommentResponse>} c
@@ -65,9 +95,9 @@ export const card = (() => {
     const renderAction = (c) => {
         let action = `<div class="d-flex justify-content-start align-items-center" data-button-action="${c.uuid}">`;
 
-        if (config.get('can_reply') !== false) {
-            action += `<button style="font-size: 0.8rem;" onclick="undangan.comment.reply('${c.uuid}')" class="btn btn-sm btn-outline-auto rounded-4 py-0 me-1 shadow-sm" data-offline-disabled="false">Reply</button>`;
-        }
+        // if (config.get('can_reply') !== false) {
+        //     action += `<button style="font-size: 0.8rem;" onclick="undangan.comment.reply('${c.uuid}')" class="btn btn-sm btn-outline-auto rounded-4 py-0 me-1 shadow-sm" data-offline-disabled="false">Reply</button>`;
+        // }
 
         if (session.isAdmin() && c.is_admin && (!c.gif_url || gif.isActive())) {
             action += `<button style="font-size: 0.8rem;" onclick="undangan.comment.edit(this, ${c.is_parent ? 'true' : 'false'})" data-uuid="${c.uuid}" class="btn btn-sm btn-outline-auto rounded-4 py-0 me-1 shadow-sm" data-own="${c.own}" data-offline-disabled="false">Edit</button>`;
@@ -163,7 +193,7 @@ export const card = (() => {
         const head = `
         <div class="d-flex justify-content-between align-items-center">
             <p class="text-theme-auto text-truncate m-0 p-0" style="font-size: 0.95rem;">${renderTitle(c)}</p>
-            <small class="text-theme-auto m-0 p-0" style="font-size: 0.75rem;">${c.created_at}</small>
+            <small class="text-theme-auto m-0 p-0" style="font-size: 0.75rem;">${timeAgo(c.created_at)}</small>
         </div>
         <hr class="my-1">`;
 
